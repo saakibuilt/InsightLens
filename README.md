@@ -129,6 +129,8 @@ pytest
 
 The Streamlit app provides an intuitive chat-based interface for querying documents:
 
+![UI Interface](docs/ui_interface.svg)
+
 ### Layout
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -212,44 +214,19 @@ The system is optimized for these types of questions:
 
 ## Architecture
 
-```
-INPUT (PDFs/Images)
-    ↓
-[PDF Parser + Vision Extractor]
-    ├─ Text extraction (PyMuPDF)
-    ├─ Table detection (pdfplumber)
-    ├─ Vision API (Claude Sonnet) for charts/maps
-    ├─ Footnote tagging
-    ↓
-[Chunker]
-    ├─ Slide-aware (preserves logical boundaries)
-    ├─ Token counting (tiktoken)
-    ↓
-[Embedder]
-    ├─ Model: all-MiniLM-L6-v2 (384-dim vectors)
-    ├─ Local inference (no API calls)
-    ↓
-SNOWFLAKE (Vector Store)
-    ├─ DOCUMENTS table (metadata)
-    ├─ CHUNKS table (vectors + text)
-    ├─ Version relationships
-    ↓
-[Hybrid Retrieval] ← USER QUERY
-    ├─ Vector search (cosine similarity)
-    ├─ BM25 keyword search
-    ├─ RRF fusion
-    ├─ Version scoring
-    ├─ Chunk-type scoring
-    ├─ Cross-encoder reranking
-    ↓
-[Claude Generation]
-    ├─ System prompt (12 rules)
-    ├─ Retrieved chunks
-    ├─ Citation formatting
-    ↓
-STREAMLIT UI
-    └─ Chat interface with source cards
-```
+![Architecture Diagram](docs/architecture_diagram.svg)
+
+### Data Flow
+
+1. **Ingestion**: PDFs/images → text extraction + vision API → slide-aware chunking → embedding
+2. **Storage**: 384-dim vectors + metadata stored in Snowflake with document versioning
+3. **Retrieval**: Hybrid pipeline (vector + BM25 + RRF + scoring + reranking)
+4. **Generation**: Claude reads ranked chunks, generates answer with inline citations
+5. **UI**: Streamlit chat with source cards, staleness flags, expandable details
+
+### Retrieval Pipeline
+
+![Retrieval Pipeline](docs/retrieval_pipeline.svg)
 
 ---
 

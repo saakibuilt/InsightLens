@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1200" height="900" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; fill: #1e293b; }
+      .stage-box { font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; fill: #1e293b; }
+      .desc-box { font-family: Arial, sans-serif; font-size: 10px; fill: #334155; }
+      .result { font-family: Arial, sans-serif; font-size: 12px; font-weight: bold; fill: #065f46; }
+    </style>
+  </defs>
+  
+  <text x="600" y="40" class="title" text-anchor="middle">Hybrid Retrieval Pipeline (8 Stages)</text>
+  
+  <!-- Stage 1 -->
+  <rect x="50" y="80" width="150" height="50" fill="#fca5a5" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="110" class="stage-box" text-anchor="middle">1. Vector Search</text>
+  <rect x="220" y="80" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="110" class="desc-box">Cosine similarity in 384-dimensional space</text>
+  <line x="125" y="130" x="125" y="160" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 2 -->
+  <rect x="50" y="160" width="150" height="50" fill="#fbbf24" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="190" class="stage-box" text-anchor="middle">2. BM25 Search</text>
+  <rect x="220" y="160" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="190" class="desc-box">Exact token overlap (case-insensitive, handles FFO, EBITDA, tickers)</text>
+  <line x="125" y="210" x="125" y="240" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 3 -->
+  <rect x="50" y="240" width="150" height="50" fill="#86efac" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="270" class="stage-box" text-anchor="middle">3. RRF Fusion</text>
+  <rect x="220" y="240" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="270" class="desc-box">Reciprocal rank fusion: score = 1/(60 + rank). Chunks high in both lists win.</text>
+  <line x="125" y="290" x="125" y="320" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 4 -->
+  <rect x="50" y="320" width="150" height="50" fill="#60a5fa" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="350" class="stage-box" text-anchor="middle">4. Similarity Floor</text>
+  <rect x="220" y="320" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="350" class="desc-box">Drop vector candidates below 0.35 cosine threshold</text>
+  <line x="125" y="370" x="125" y="400" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 5 -->
+  <rect x="50" y="400" width="150" height="50" fill="#a78bfa" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="430" class="stage-box" text-anchor="middle">5. Version Scoring</text>
+  <rect x="220" y="400" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="430" class="desc-box">+15% boost for CURRENT version documents; -20% penalty for SUPERSEDED docs</text>
+  <line x="125" y="450" x="125" y="480" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 6 -->
+  <rect x="50" y="480" width="150" height="50" fill="#f472b6" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="510" class="stage-box" text-anchor="middle">6. Chunk-Type Scoring</text>
+  <rect x="220" y="480" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="510" class="desc-box">Financial tables: +25% on numeric q's | Body: +10% on narrative q's</text>
+  <line x="125" y="530" x="125" y="560" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 7 -->
+  <rect x="50" y="560" width="150" height="50" fill="#7c3aed" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="590" class="stage-box" text-anchor="middle">7. Cross-Encoder</text>
+  <rect x="220" y="560" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="590" class="desc-box">Claude reads (query, chunk) pairs as joint context. Slower but more precise.</text>
+  <line x="125" y="610" x="125" y="640" stroke="#94a3b8" stroke-width="2"/>
+  
+  <!-- Stage 8 -->
+  <rect x="50" y="640" width="150" height="50" fill="#06b6d4" stroke="#1e293b" stroke-width="2" rx="5"/>
+  <text x="125" y="670" class="stage-box" text-anchor="middle">8. Deduplication</text>
+  <rect x="220" y="640" width="950" height="50" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="240" y="670" class="desc-box">Keep only top-ranked chunk per (document, page) pair</text>
+  
+  <!-- Result -->
+  <rect x="50" y="740" width="1100" height="60" fill="#d1fae5" stroke="#059669" stroke-width="2" rx="5"/>
+  <text x="600" y="775" class="result" text-anchor="middle">✓ Top K Ranked Chunks → Ready for Claude Generation with Citations</text>
+</svg>

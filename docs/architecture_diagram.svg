@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="1000" height="1300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .title { font-family: Arial, sans-serif; font-size: 18px; font-weight: bold; fill: #1e293b; }
+      .stage-label { font-family: Arial, sans-serif; font-size: 12px; font-weight: bold; fill: #1e293b; }
+      .stage-num { font-family: Arial, sans-serif; font-size: 16px; font-weight: bold; fill: white; }
+      .arrow { stroke: #475569; stroke-width: 2; fill: none; }
+      .arrowhead { fill: #475569; }
+    </style>
+  </defs>
+  
+  <text x="500" y="40" class="title" text-anchor="middle">InsightLens Architecture & Data Flow</text>
+  
+  <!-- Stage 1: Input -->
+  <rect x="350" y="80" width="300" height="60" fill="#fef3c7" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="115" class="stage-label" text-anchor="middle">📥 PDFs/Images</text>
+  <circle cx="300" cy="110" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="300" y="120" class="stage-num" text-anchor="middle">1</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="140" x2="500" y2="180" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 2: Parser -->
+  <rect x="300" y="180" width="400" height="70" fill="#bfdbfe" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="220" class="stage-label" text-anchor="middle">PDF Parser + Vision Extractor</text>
+  <circle cx="220" cy="215" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="225" class="stage-num" text-anchor="middle">2</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="250" x2="500" y2="290" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 3: Chunker -->
+  <rect x="300" y="290" width="400" height="70" fill="#bfdbfe" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="330" class="stage-label" text-anchor="middle">Slide-Aware Chunker</text>
+  <circle cx="220" cy="325" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="335" class="stage-num" text-anchor="middle">3</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="360" x2="500" y2="400" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 4: Embedder -->
+  <rect x="300" y="400" width="400" height="70" fill="#bfdbfe" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="440" class="stage-label" text-anchor="middle">Embedder (all-MiniLM-L6-v2)</text>
+  <circle cx="220" cy="435" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="445" class="stage-num" text-anchor="middle">4</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="470" x2="500" y2="510" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 5: Storage -->
+  <rect x="250" y="510" width="500" height="70" fill="#d1fae5" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="550" class="stage-label" text-anchor="middle">Snowflake Vector Database (384-dim)</text>
+  <circle cx="150" cy="545" r="15" fill="#10b981" stroke="#1e293b" stroke-width="2"/>
+  <text x="150" y="555" class="stage-num" text-anchor="middle">5</text>
+  
+  <!-- Query Path -->
+  <circle cx="100" cy="620" r="20" fill="#fef3c7" stroke="#1e293b" stroke-width="2"/>
+  <text x="100" y="630" class="stage-label" text-anchor="middle" font-size="10">QUERY</text>
+  <line x1="120" y1="620" x2="280" y2="620" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 6: Retrieval -->
+  <rect x="280" y="585" width="440" height="70" fill="#bfdbfe" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="625" class="stage-label" text-anchor="middle">Hybrid Retrieval (Vector+BM25+RRF)</text>
+  <circle cx="190" cy="620" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="190" y="630" class="stage-num" text-anchor="middle">6</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="655" x2="500" y2="695" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 7: Reranker -->
+  <rect x="300" y="695" width="400" height="70" fill="#bfdbfe" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="735" class="stage-label" text-anchor="middle">Cross-Encoder Reranking</text>
+  <circle cx="220" cy="730" r="15" fill="#3b82f6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="740" class="stage-num" text-anchor="middle">7</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="765" x2="500" y2="805" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Stage 8: Generation -->
+  <rect x="300" y="805" width="400" height="70" fill="#f3e8ff" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="845" class="stage-label" text-anchor="middle">Claude Generation</text>
+  <circle cx="220" cy="840" r="15" fill="#8b5cf6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="850" class="stage-num" text-anchor="middle">8</text>
+  
+  <!-- Arrow -->
+  <line x1="500" y1="875" x2="500" y2="915" class="arrow" marker-end="url(#arrowhead)"/>
+  
+  <!-- Output -->
+  <rect x="300" y="915" width="400" height="70" fill="#f3e8ff" stroke="#1e293b" stroke-width="2" rx="10"/>
+  <text x="500" y="955" class="stage-label" text-anchor="middle">Streamlit Chat UI with Citations</text>
+  <circle cx="220" cy="950" r="15" fill="#8b5cf6" stroke="#1e293b" stroke-width="2"/>
+  <text x="220" y="960" class="stage-num" text-anchor="middle">9</text>
+  
+  <!-- Legend -->
+  <rect x="50" y="1050" width="900" height="200" fill="none" stroke="#cbd5e1" stroke-width="1" rx="5"/>
+  <text x="70" y="1075" style="font-family: Arial; font-size: 12px; font-weight: bold; fill: #1e293b;">Color Legend:</text>
+  
+  <rect x="70" y="1095" width="20" height="20" fill="#fef3c7" stroke="#1e293b" stroke-width="1"/>
+  <text x="100" y="1110" style="font-family: Arial; font-size: 11px; fill: #1e293b;">Input</text>
+  
+  <rect x="200" y="1095" width="20" height="20" fill="#bfdbfe" stroke="#1e293b" stroke-width="1"/>
+  <text x="230" y="1110" style="font-family: Arial; font-size: 11px; fill: #1e293b;">Processing</text>
+  
+  <rect x="370" y="1095" width="20" height="20" fill="#d1fae5" stroke="#1e293b" stroke-width="1"/>
+  <text x="400" y="1110" style="font-family: Arial; font-size: 11px; fill: #1e293b;">Storage</text>
+  
+  <rect x="520" y="1095" width="20" height="20" fill="#f3e8ff" stroke="#1e293b" stroke-width="1"/>
+  <text x="550" y="1110" style="font-family: Arial; font-size: 11px; fill: #1e293b;">Output/Generation</text>
+  
+  <text x="70" y="1155" style="font-family: Arial; font-size: 10px; fill: #334155;">Stages 1-4: Ingestion • Stage 5: Storage • Stage 6: Retrieval • Stages 7-8: LLM Processing • Stage 9: User Interface</text>
+</svg>
