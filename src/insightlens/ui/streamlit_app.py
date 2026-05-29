@@ -42,7 +42,7 @@ from insightlens.retrieval.vector_search import RetrievalRequest
 from insightlens.storage.chunk_repository import ChunkRepository, RetrievedChunk
 from insightlens.storage.snowflake_client import open_connection
 
-# ── Session state ──────────────────────────────────────────────────────────────
+"""@ 2026 Developed by Saksham Nirula"""
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
@@ -79,7 +79,6 @@ except Exception as exc:
     st.info("Check that your secrets are configured in the Streamlit Cloud dashboard.")
     st.stop()
 
-# ── Sidebar ────────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.html(
         "<div style='padding:4px 0 12px'>"
@@ -103,7 +102,6 @@ with st.sidebar:
         st.session_state.messages = []
         st.rerun()
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _render_text(text: str) -> None:
     """Render body text: gradient-fade scroll for long passages."""
@@ -316,7 +314,6 @@ def _classify_chart_lines(
         elif _YEAR_ROW_RE.match(line) or _YEAR_SINGLE_RE.match(line):
             year_rows.append(line)
         elif not seen_value and _INLINE_VALUE_RE.match(line):
-            # FIX 13: short line with an embedded dollar figure → treat as value
             values.append(line)
             seen_value = True
         elif not seen_value and len(titles) < 4:
@@ -505,7 +502,6 @@ def _try_render_pipe_table(text: str) -> bool:
     header, *data = rows
     if not data:
         return False
-    # Use same genuine-table validator on the reconstructed rows
     if not _is_genuine_financial_table([header] + data):
         return False
     _th = ("border:1px solid #cbd5e1;padding:5px 10px;text-align:left;"
@@ -525,7 +521,6 @@ def _try_render_pipe_table(text: str) -> bool:
     return True
 
 
-# ── Badge + dispatch ───────────────────────────────────────────────────────────
 
 def _resolve_content_kind(chunk: RetrievedChunk) -> str:
     """Classify what a chunk will actually render as — drives badge and dispatch.
@@ -543,7 +538,6 @@ def _resolve_content_kind(chunk: RetrievedChunk) -> str:
     if chunk.chunk_type == "chart_caption":
         return "chart"
 
-    # financial_table with no usable structured_content
     if chunk.chunk_type == "financial_table":
         if len(_FIN_SIGNALS.findall(chunk.chunk_text)) >= 4:
             return "statement"
@@ -551,7 +545,6 @@ def _resolve_content_kind(chunk: RetrievedChunk) -> str:
         if vals or years:
             return "chart"
 
-    # body — check for financial statement content
     if chunk.chunk_type == "body":
         if len(_FIN_SIGNALS.findall(chunk.chunk_text)) >= 5:
             return "statement"
@@ -586,7 +579,6 @@ _KIND_CHIP = {
 }
 
 
-# ── Source card content ────────────────────────────────────────────────────────
 
 def _render_chunk_content(chunk: RetrievedChunk, kind: str) -> None:
     """Render the content artifact for a source card.
@@ -598,7 +590,6 @@ def _render_chunk_content(chunk: RetrievedChunk, kind: str) -> None:
       text       → title + excerpt preview + ▶ expand (narrative slides)
       reference  → same as text but clearly labelled (TOC, definitions, appendix)
     """
-    # ── table ─────────────────────────────────────────────────────────────────
     if kind == "table":
         if chunk.structured_content:
             if _try_render_table(chunk.structured_content):
@@ -607,22 +598,17 @@ def _render_chunk_content(chunk: RetrievedChunk, kind: str) -> None:
                 return
         if _try_render_pipe_table(chunk.chunk_text):
             return
-        # fell through — treat as statement
         kind = "statement"
 
-    # ── statement ─────────────────────────────────────────────────────────────
     if kind == "statement":
         if _try_render_financial_table_from_body(chunk.chunk_text):
             return
-        # fell through — treat as text
         kind = "text"
 
-    # ── chart ─────────────────────────────────────────────────────────────────
     if kind == "chart":
         _render_chart_text(chunk.chunk_text)
         return
 
-    # ── text / reference ──────────────────────────────────────────────────────
     _render_body_content(chunk.chunk_text)
 
 
@@ -637,11 +623,9 @@ def _render_sources(chunks: list[RetrievedChunk]) -> None:
         company = (chunk.company or "Unknown").upper()
         pct     = "—" if chunk.similarity == 0.0 else f"{chunk.similarity:.0%}"
 
-        # Short, scannable expander label — company + page + match score only
         label = f"{badge}Source {i}  ·  {company}  ·  p.{chunk.page_number}  ·  {pct} match"
 
         with st.expander(label):
-            # ── Metadata bar ──────────────────────────────────────────────
             fname     = chunk.file_name if len(chunk.file_name) <= 60 else chunk.file_name[:57] + "…"
             section   = chunk.section_header or ""
             version   = chunk.version_label or ""
@@ -663,11 +647,9 @@ def _render_sources(chunks: list[RetrievedChunk]) -> None:
                 + "</div>"
             )
 
-            # ── Content-type chip + artifact ───────────────────────────────
             st.html(_KIND_CHIP[kind] + "<div style='margin-bottom:8px'></div>")
             _render_chunk_content(chunk, kind)
 
-# ── Empty state — centered welcome ─────────────────────────────────────────────
 if not st.session_state.messages:
     st.markdown("<div style='height:20vh'></div>", unsafe_allow_html=True)
     _, mid, _ = st.columns([1, 2, 1])
@@ -686,14 +668,12 @@ if not st.session_state.messages:
             "</div>"
         )
 
-# ── Conversation history ────────────────────────────────────────────────────────
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg["role"] == "assistant" and msg.get("chunks"):
             _render_sources(msg["chunks"])
 
-# ── Chat input (sticks to bottom of page automatically) ────────────────────────
 question = st.chat_input("Ask about your investment documents…")
 
 _FOLLOWUP_RE = re.compile(
@@ -716,7 +696,6 @@ def _contextualize_query(raw: str, history: list[dict]) -> str:
       Retrieval query: "Context: What are VICI's key operating metrics?
                         Question: How does that compare to last quarter?"
     """
-    # Only apply when there is a prior turn
     user_turns = [m for m in history if m["role"] == "user"]
     if not user_turns:
         return raw
@@ -732,8 +711,6 @@ def _contextualize_query(raw: str, history: list[dict]) -> str:
     return f"Context: {prev_question}\nQuestion: {raw}"
 
 
-# ── Cross-company coverage guarantee ──────────────────────────────────────────
-# Maps common query spellings to the company name stored in Snowflake.
 _COMPANY_ALIASES: dict[str, str] = {
     "realty income":  "Realty Income",
     "digital realty": "Digital",
@@ -765,20 +742,17 @@ def _ensure_company_coverage(
     represented = {(c.company or "").lower() for c in chunks}
     query_lower = query.lower()
 
-    # Build lookup: lowercased stored name → original stored name
     company_lookup = {c.lower(): c for c in companies}
 
     missing: list[str] = []
     seen_missing: set[str] = set()
 
-    # Direct match against stored company names
     for stored_lower, stored_name in company_lookup.items():
         if stored_lower in query_lower and stored_lower not in represented:
             if stored_lower not in seen_missing:
                 missing.append(stored_name)
                 seen_missing.add(stored_lower)
 
-    # Alias match (handles "Realty Income", "Digital Realty", etc.)
     for alias, canonical in _COMPANY_ALIASES.items():
         if alias in query_lower:
             actual = company_lookup.get(canonical.lower(), canonical)
@@ -809,15 +783,12 @@ def _ensure_company_coverage(
 if question:
     company_filter = None if company_choice == "All companies" else company_choice
 
-    # Show user bubble immediately
     st.session_state.messages.append({"role": "user", "content": question})
     with st.chat_message("user"):
         st.markdown(question)
 
-    # Contextualize follow-up questions before retrieval
     retrieval_query = _contextualize_query(question, st.session_state.messages[:-1])
 
-    # Retrieve chunks then stream the answer
     with st.chat_message("assistant"):
         with st.spinner("Searching documents…"):
             corpus = _load_corpus(cfg)
@@ -837,13 +808,10 @@ if question:
                     )
                 )
 
-                # For cross-company queries, ensure every mentioned company
-                # has at least one chunk — prevents single-doc domination.
                 if not company_filter:
                     chunks = _ensure_company_coverage(retrieval_query, chunks, retrieval)
 
         user_prompt = build_user_prompt(question, chunks)
-        # st.write_stream feeds the generator token-by-token into the UI
         answer_text = st.write_stream(llm.stream(SYSTEM_PROMPT, user_prompt))
         _render_sources(chunks)
 

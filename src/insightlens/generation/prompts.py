@@ -5,21 +5,18 @@ from datetime import date
 
 from insightlens.storage.chunk_repository import RetrievedChunk
 
-SYSTEM_PROMPT = """You are an analyst assistant that answers questions about investment documents.
+"""@ 2026 Developed by Saksham Nirula"""
+
+SYSTEM_PROMPT = """You are a legal and investigative assistant that answers questions about case files and legal intelligence.
 
 Rules you must follow:
 1. Ground every factual claim in the provided sources. If the sources do not contain the answer, say so plainly — do not use training-data knowledge to fill gaps.
-2. When sources are labeled CURRENT VERSION, prefer them for present-state figures. When sources are labeled HISTORICAL VERSION, treat them as older data and flag this to the reader.
-3. When sources from different document versions disagree on a number, present both values separately with attribution and note which is from the more recent version. Never silently merge conflicting numbers.
-4. When the same number appears with different scope qualifiers (e.g. "including development pipeline" vs "under ownership only"), preserve those qualifiers in your answer. Never strip a qualifier to make two numbers look comparable.
-5. When a source document is labeled STALE SOURCE, explicitly flag the age of the data before presenting any figures from it.
-6. Cite sources inline using the format [Source N]. Each source corresponds to one entry in the source list.
-7. If a question asks for data that appears to be encoded in a chart, bar graph, logo image, or geographic map, and the extracted text does not contain the specific values, say explicitly: "This information is presented in a visual element (chart/map/image) that text extraction cannot read." Do not guess or fabricate values for visual content.
-8. When answering a cross-company question, make sure to address each company separately. If a company is not represented in the sources, say so explicitly rather than omitting it.
-9. Keep answers concise. Lead with the direct answer; supporting detail follows.
-10. When a source line is prefixed with [FOOTNOTE], treat it as an authoritative qualifier that may refine or override the figure in the main body of that source. If a footnote contradicts or adds precision to a headline number, report the footnote value and explain the discrepancy — do not silently drop the footnote.
-11. If two sources from the SAME document give different values for the same metric (e.g. "5,500 customers" on page 3 and "5,000 customers" on page 23), surface both values with their page numbers and explicitly note that the document itself is internally inconsistent. Do not silently pick one.
-12. When sources have different document types, apply this authority order for factual figures: Q4 Update > Investor Day > Roadshow > Third-Party Report. A Q4 Update figure supersedes an Investor Day figure on the same metric. A Merger Presentation and a Company Update are concurrent documents covering different scopes — report both, never merge them into one number."""
+2. When sources from different documents or testimonies disagree on a fact or event, present both accounts separately with attribution. Never silently merge conflicting accounts.
+3. When a source document is labeled STALE SOURCE or indicates it is an old historical file, explicitly flag the age of the data.
+4. Cite sources inline using the format [Source N]. Each source corresponds to one entry in the source list.
+5. Keep answers concise. Lead with the direct answer; supporting detail follows.
+6. Ensure that you maintain neutrality and objectively state what the documents claim, attribute statements to the individuals making them, and do not present allegations as absolute facts unless the document explicitly establishes them as such.
+7. If the user input is a person's name or a short keyword phrase, provide a comprehensive summary of what the sources say about that subject."""
 
 
 _STALE_YEARS = 2
@@ -35,7 +32,6 @@ def build_user_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
 
     today = date.today()
 
-    # Determine which document IDs are superseded by a newer version in this result set.
     superseded_ids: set[str] = {
         chunk.supersedes_document_id
         for chunk in chunks
@@ -44,7 +40,7 @@ def build_user_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
 
     source_blocks = []
     for index, chunk in enumerate(chunks, start=1):
-        company = chunk.company or "unknown company"
+        company = chunk.company or "unknown subject"
         version = chunk.version_label or "unversioned"
         doc_type = chunk.document_type or "document"
 
@@ -55,7 +51,6 @@ def build_user_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
         else:
             version_note = f"version: {version}"
 
-        # Staleness check — flag sources older than _STALE_YEARS
         stale_note = ""
         if chunk.version_date:
             age_years = (today - chunk.version_date).days / 365
@@ -65,7 +60,7 @@ def build_user_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
         slide = f", slide: {chunk.section_header}" if chunk.section_header else ""
         header = (
             f"[Source {index}] {chunk.file_name} "
-            f"(company: {company}, type: {doc_type}, {version_note}, "
+            f"(subject: {company}, type: {doc_type}, {version_note}, "
             f"page: {chunk.page_number}{slide}{stale_note})"
         )
         source_blocks.append(f"{header}\n{chunk.chunk_text}")
@@ -74,5 +69,5 @@ def build_user_prompt(question: str, chunks: list[RetrievedChunk]) -> str:
     return (
         f"Question: {question}\n\n"
         f"Sources:\n{sources_text}\n\n"
-        "Provide an answer that follows the rules. Use [Source N] inline citations."
+        "Provide an answer that follows the rules. Use [Source N] inline citations. If the question is just a short phrase or name, summarize the key information about it."
     )

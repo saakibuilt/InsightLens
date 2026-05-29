@@ -9,6 +9,8 @@ from typing import Iterable, Sequence
 from snowflake.connector import SnowflakeConnection
 from snowflake.connector.errors import ProgrammingError
 
+"""@ 2026 Developed by Saksham Nirula"""
+
 
 @dataclass(frozen=True)
 class DocumentRecord:
@@ -149,6 +151,19 @@ class ChunkRepository:
         except ProgrammingError as exc:
             raise RepositoryError(
                 f"Failed to delete document {document_id}: {exc.msg}"
+            ) from exc
+        finally:
+            cursor.close()
+
+    def clear_all(self) -> None:
+        """Delete all documents and chunks from the database."""
+        cursor = self._conn.cursor()
+        try:
+            cursor.execute("TRUNCATE TABLE CHUNKS")
+            cursor.execute("TRUNCATE TABLE DOCUMENTS")
+        except ProgrammingError as exc:
+            raise RepositoryError(
+                f"Failed to clear database: {exc.msg}"
             ) from exc
         finally:
             cursor.close()

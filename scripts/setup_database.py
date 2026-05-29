@@ -11,6 +11,8 @@ from insightlens.storage.snowflake_client import (
     open_connection,
 )
 
+"""@ 2026 Developed by Saksham Nirula"""
+
 
 def main() -> int:
     try:
@@ -28,6 +30,10 @@ def main() -> int:
 
     try:
         with open_connection(cfg.snowflake) as conn:
+            print("[setup_database] Dropping existing tables to reset the database...")
+            conn.cursor().execute("DROP TABLE IF EXISTS CHUNKS;")
+            conn.cursor().execute("DROP TABLE IF EXISTS DOCUMENTS;")
+            
             execute_script(conn, sql_text)
     except SnowflakeConnectionError as exc:
         print(f"[setup_database] {exc}", file=sys.stderr)

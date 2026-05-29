@@ -7,7 +7,6 @@ from insightlens.embeddings.embedder import Embedder
 from insightlens.retrieval.reranker import Reranker
 from insightlens.storage.chunk_repository import ChunkRepository, RetrievedChunk
 
-# Retrieve 3× more candidates than needed so the reranker has room to work.
 _CANDIDATE_MULTIPLIER = 3
 
 
@@ -20,8 +19,6 @@ class RetrievalRequest:
     query: str
     top_k: int
     company_filter: str | None = None
-    # Optional explicit type preference — overrides auto-detection.
-    # e.g. ("financial_table",) to restrict scoring boost to table chunks only.
     preferred_chunk_types: tuple[str, ...] | None = None
 
 
@@ -46,7 +43,6 @@ class VectorSearchService:
 
         query_vector = self._embedder.embed_query(request.query)
 
-        # When a reranker is active, over-fetch candidates so reranker can pick the best.
         candidate_k = request.top_k * _CANDIDATE_MULTIPLIER if self._reranker else request.top_k
 
         chunks = self._repository.search_similar(

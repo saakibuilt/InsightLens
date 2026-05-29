@@ -1,9 +1,4 @@
-"""Vision-based content extraction for chart, map, and logo slides.
-
-Called during ingestion for pages with sparse text (< 300 chars) where the
-meaningful content is encoded in bar charts, geographic maps, tenant logo
-tables, or infographic layouts that text extraction cannot read.
-"""
+"""Vision-based content extraction for chart, map, and logo slides."""
 from __future__ import annotations
 
 import base64
@@ -27,32 +22,17 @@ If a specific value is genuinely unclear in the image write "value unclear" — 
 
 
 def extract_visual_content(fitz_page: object) -> str:
-    """Render a PDF page to PNG and extract all visible content via Claude vision.
-
-    Parameters
-    ----------
-    fitz_page:
-        A ``fitz.Page`` object (PyMuPDF).  Typed as ``object`` to avoid a
-        hard import dependency — callers that don't use vision still work.
-
-    Returns
-    -------
-    str
-        Extracted text describing all visual elements, or empty string if the
-        API key is missing or the call fails.
-    """
+    """Render a PDF page to PNG and extract all visible content via Claude vision."""
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
         return ""
 
     try:
         import anthropic
-        import fitz as _fitz  # noqa: F401 — confirm fitz is available
+        import fitz as _fitz
     except ImportError:
         return ""
 
-    # Render at 150 DPI: sharp enough to read chart labels, small enough to keep
-    # the base64 payload under ~400 KB for a typical slide.
     try:
         mat = __import__("fitz").Matrix(150 / 72, 150 / 72)
         pix = fitz_page.get_pixmap(matrix=mat)

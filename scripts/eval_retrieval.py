@@ -1,20 +1,4 @@
-"""Retrieval evaluation: measures Hit@K and MRR against a ground-truth query set.
-
-Run:
-    python scripts/eval_retrieval.py
-
-What this measures:
-  Hit@K  — fraction of queries where at least one relevant chunk appears in the top K results.
-  MRR    — Mean Reciprocal Rank: average of 1/rank_of_first_relevant_chunk.
-            MRR=1.0 means the best chunk is always rank 1. MRR=0.5 means it's rank 2 on average.
-
-Ground truth:
-  Each test case defines a query and a set of "relevant signals" — keywords or phrases that
-  MUST appear in at least one retrieved chunk for the result to count as a hit.
-  This is a keyword-presence proxy for relevance; it avoids needing human-labeled data
-  while still being meaningful (if "FFO" and "per share" don't appear in any retrieved chunk
-  for the FFO-per-share query, the retrieval clearly failed).
-"""
+"""Retrieval evaluation: measures Hit@K and MRR against a ground-truth query set."""
 from __future__ import annotations
 
 import sys
@@ -30,54 +14,44 @@ from insightlens.retrieval.vector_search import RetrievalRequest
 from insightlens.storage.chunk_repository import ChunkRepository
 from insightlens.storage.snowflake_client import open_connection
 
-# ── Ground-truth test cases ────────────────────────────────────────────────────
-# Each entry: (query, [list of keyword signals], company_filter or None)
-# A result is a HIT when at least one retrieved chunk contains ALL signals in any
-# single signal group (inner list = AND, outer list = OR between groups).
+"""@ 2026 Developed by Saksham Nirula"""
+
 TEST_CASES: list[tuple[str, list[list[str]], str | None]] = [
-    # VICI — operating metrics
     (
         "What are the key operating metrics for VICI Properties?",
         [["occupancy"], ["same-store"], ["rent"], ["FFO"], ["AFFO"]],
         "VICI",
     ),
-    # VICI — FFO
     (
         "What was VICI's FFO per share?",
         [["FFO", "per share"], ["FFO", "diluted"], ["funds from operations"]],
         "VICI",
     ),
-    # VICI — dividend / yield
     (
         "What is VICI's dividend yield or dividend per share?",
         [["dividend"], ["yield"], ["per share"]],
         "VICI",
     ),
-    # VICI — portfolio composition
     (
         "What properties does VICI own and where are they located?",
         [["Las Vegas"], ["Caesars"], ["MGM"], ["portfolio"], ["properties"]],
         "VICI",
     ),
-    # VICI — investment thesis / strategy
     (
         "What is VICI's investment thesis and competitive advantage?",
         [["experiential"], ["triple net"], ["NNN"], ["long-term"], ["lease"]],
         "VICI",
     ),
-    # BXP — NOI
     (
         "What is BXP's net operating income?",
         [["NOI"], ["net operating income"], ["operating income"]],
         "BXP",
     ),
-    # BXP — leasing activity
     (
         "What is BXP's occupancy rate and leasing activity?",
         [["occupancy"], ["leased"], ["square feet"], ["leasing"]],
         "BXP",
     ),
-    # Cross-company — version currency check
     (
         "What is the latest guidance for 2025?",
         [["guidance"], ["2025"], ["outlook"], ["forecast"]],

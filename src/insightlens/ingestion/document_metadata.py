@@ -25,9 +25,8 @@ _VERSION_PATTERNS = [
 
 _DATE_PATTERN = re.compile(r"(20\d{2})[-_/](\d{1,2})[-_/](\d{1,2})")
 
-# Priority-ordered: first match wins.  More specific patterns must come before
-# catch-all ones ("Investor Presentation" must be last).
 _DOC_TYPE_PATTERNS: list[tuple[str, list[str]]] = [
+    ("Court Document",        ["court", "case", "plaintiff", "defendant", "subpoena", "lawsuit", "complaint", "affidavit", "deposition", "exhibit"]),
     ("Merger Presentation",   ["merger"]),
     ("Investor Day",          ["morning session", "investor day"]),
     ("Q4 Update",             ["q4 2025", "q4-2025", "q4_2025", "q4 2024", "q4-2024"]),
@@ -54,25 +53,20 @@ def extract_metadata(file_path: Path, first_page_text: str) -> DocumentMetadata:
     )
 
 
-# Words that signal the start of a document title, not part of the company name.
 _DOC_TITLE_WORDS = {"company", "merger", "session", "morning", "impact", "the", "q1", "q2", "q3", "q4"}
 
 
 def _detect_company(stem: str, first_page_text: str) -> str | None:
-    # Use whichever separator appears first — avoids trailing underscores fooling the split.
     underscore_pos = stem.find("_")
     hyphen_pos = stem.find("-")
 
     if underscore_pos == -1 and hyphen_pos == -1:
-        # No separator: natural-language filename like "BXP Morning Session Deck web".
         candidate = stem.split()[0].strip() if stem else ""
     elif hyphen_pos != -1 and (underscore_pos == -1 or hyphen_pos < underscore_pos):
         candidate = stem[:hyphen_pos].strip()
     else:
         candidate = stem[:underscore_pos].strip()
 
-    # If we still have multiple words, drop the second word when it's a doc-title word
-    # (e.g. "PSA Merger" → "PSA", "PSA Company" → "PSA").
     words = candidate.split()
     if len(words) > 2:
         candidate = words[0]
@@ -98,8 +92,6 @@ def _detect_doc_type(haystack: str) -> str | None:
 
 
 def _detect_version_label(stem: str) -> str | None:
-    # Replace underscores/hyphens with spaces so \b word-boundaries work correctly.
-    # e.g. "Acme_InvestorDeck_v2" → "Acme InvestorDeck v2" matches \bv(\d+)\b
     normalized = stem.replace("_", " ").replace("-", " ")
     for pattern in _VERSION_PATTERNS:
         match = pattern.search(normalized)

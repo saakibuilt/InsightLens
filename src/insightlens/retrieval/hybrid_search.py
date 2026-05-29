@@ -1,23 +1,4 @@
-"""Hybrid retrieval: BM25 keyword search + vector similarity, fused with RRF.
-
-Pipeline (in order):
-1. Vector search      — top-N candidates ranked by cosine similarity.
-2. BM25 search        — same corpus ranked by exact-token overlap.
-3. RRF fusion         — score = 1/(k + rank_vector) + 1/(k + rank_bm25).
-                        Chunks near the top of both lists score highest.
-4. Similarity floor   — vector candidates below the cosine threshold are dropped.
-5. Version scoring    — chunks from the CURRENT document version get a boost;
-                        chunks from a SUPERSEDED version get a penalty.
-6. Chunk-type scoring — financial_table chunks get a boost for numeric/financial
-                        queries; body chunks get a small boost for narrative
-                        queries.  This lets structured artifacts (tables, data
-                        slides) surface ahead of prose when the question is
-                        asking for a specific figure or metric.
-7. Cross-encoder rerank — final pass reads (query, chunk) as a joint pair,
-                        catching cases where a chunk is topically similar but
-                        not the best evidence for the specific question asked.
-8. Deduplication      — keeps only the highest-ranked chunk per (document, page).
-"""
+"""Hybrid retrieval: BM25 keyword search + vector similarity, fused with RRF."""
 from __future__ import annotations
 
 import re
@@ -29,31 +10,23 @@ from insightlens.retrieval.reranker import Reranker
 from insightlens.retrieval.vector_search import RetrievalRequest
 from insightlens.storage.chunk_repository import ChunkRepository, RetrievedChunk
 
-_RRF_K = 60                   # dampens rank differences; 60 is the standard choice
-_SIMILARITY_THRESHOLD = 0.35  # cosine floor — vector candidates below this are dropped
-_CANDIDATE_MULTIPLIER = 3     # over-fetch before reranking
-_MAX_CHUNKS_PER_DOC = 3       # cross-company cap: no single document dominates top-K
+"""@ 2026 Developed by Saksham Nirula"""
 
-# Version-currency score multipliers.
+_RRF_K = 60
+_SIMILARITY_THRESHOLD = 0.35
+_CANDIDATE_MULTIPLIER = 3
+
 _VERSION_BOOST = 1.15
 _VERSION_PENALTY = 0.80
 
-# Chunk-type score multipliers applied when the query is classified as numeric.
-# financial_table gets the largest boost — it's the most authoritative source
-# for specific figures.  chart_caption sits in between — numbers present but
-# less structured.  body gets a small penalty for numeric queries because a
-# paragraph that *mentions* FFO is less authoritative than the actual table.
-# For narrative queries the adjustment is reversed: body chunks are preferred.
-_TABLE_BOOST_NUMERIC = 1.25    # financial_table  on a numeric  query
-_CHART_BOOST_NUMERIC = 1.08    # chart_caption    on a numeric  query
-_BODY_PENALTY_NUMERIC = 0.88   # body             on a numeric  query
-_BODY_BOOST_NARRATIVE = 1.10   # body             on a narrative query
-_TABLE_PENALTY_NARRATIVE = 0.95  # financial_table on a narrative query (slight)
+_TABLE_BOOST_NUMERIC = 1.25
+_CHART_BOOST_NUMERIC = 1.08
+_BODY_PENALTY_NUMERIC = 0.88
+_BODY_BOOST_NARRATIVE = 1.10
+_TABLE_PENALTY_NARRATIVE = 0.95
 
-# Signals that mark a query as asking for a specific financial figure or metric.
 _NUMERIC_QUERY_RE = re.compile(
     r"\b(?:"
-    # financial metrics and their abbreviations
     r"revenue|earnings|income|ebitda|noi|ffo|affo|ebit|ebita|"
     r"dividend|yield|per\s+share|occupancy|leased|"
     r"growth|guidance|target|forecast|projection|outlook|"
@@ -61,13 +34,12 @@ _NUMERIC_QUERY_RE = re.compile(
     r"million|billion|trillion|quarterly|annual|fiscal|"
     r"metric|kpi|financial|figure|number|amount|total|"
     r"basis\s+points|bps|percent|percentage|"
-    # question patterns that signal a numeric answer
     r"how\s+much|how\s+many|"
     r"what\s+(?:are|were)\s+(?:the\s+)?(?:key\s+)?(?:operating|financial|"
     r"performance)\s+metrics"
     r")\b"
-    r"|[\$\%]"           # explicit currency or percent symbol
-    r"|\d+\.?\d*[xX]",   # multiplier notation like 3.5x
+    r"|[\$\%]"
+    r"|\d+\.?\d*[xX]",
     re.IGNORECASE,
 )
 
@@ -86,7 +58,6 @@ class HybridSearchService:
         self._repository = repository
         self._reranker = reranker
 
-        # Build BM25 index once from the preloaded corpus.
         self._corpus = corpus_chunks
         tokenized = [c.chunk_text.lower().split() for c in corpus_chunks]
         self._bm25 = BM25Okapi(tokenized) if tokenized else None
@@ -94,7 +65,6 @@ class HybridSearchService:
     def retrieve(self, request: RetrievalRequest) -> list[RetrievedChunk]:
         candidate_k = request.top_k * _CANDIDATE_MULTIPLIER
 
-        # ── 1. Vector search ──────────────────────────────────────────────────
         query_vector = self._embedder.embed_query(request.query)
         vector_candidates = self._repository.search_similar(
             query_embedding=query_vector,
@@ -105,38 +75,25 @@ class HybridSearchService:
             c for c in vector_candidates if c.similarity >= _SIMILARITY_THRESHOLD
         ]
 
-        # ── 2. BM25 search ────────────────────────────────────────────────────
         bm25_candidates = self._bm25_search(request.query, request.company_filter, candidate_k)
 
-        # ── 3. RRF fusion ─────────────────────────────────────────────────────
         fused_scored = self._rrf_fuse(vector_candidates, bm25_candidates)
 
-        # ── 4. Version-aware re-scoring ───────────────────────────────────────
         fused_scored = self._apply_version_scores(fused_scored)
 
-        # ── 5. Chunk-type re-scoring ──────────────────────────────────────────
-        # Boosts structured chunks (tables) for numeric queries and prose chunks
-        # for narrative queries.  The caller can override auto-detection by
-        # setting preferred_chunk_types on the request.
         fused_scored = self._apply_chunk_type_scores(fused_scored, request)
 
-        # Strip scores — reranker and deduplicator work on chunk lists.
         fused = [chunk for chunk, _ in fused_scored]
 
-        # ── 6. Per-document quota (cross-company queries only) ─────────────────
-        # When no company filter is set, one document can dominate all top-K
-        # slots (e.g. Digital Realty with 100+ AI mentions on cross-sector
-        # queries). Cap each document to _MAX_CHUNKS_PER_DOC before reranking.
         if not request.company_filter:
-            fused = self._apply_per_doc_quota(fused)
+            fused = self._apply_per_doc_quota(fused, request.top_k)
 
-        # ── 7 & 8. Rerank → deduplicate ───────────────────────────────────────
-        if self._reranker and fused:
+        is_short_keyword = len(request.query.split()) <= 3
+        if self._reranker and fused and not is_short_keyword:
             reranked = self._reranker.rerank(request.query, fused, request.top_k * 2)
             return self._deduplicate(reranked)[: request.top_k]
         return self._deduplicate(fused)[: request.top_k]
 
-    # ── Internals ──────────────────────────────────────────────────────────────
 
     def _bm25_search(
         self, query: str, company_filter: str | None, top_k: int
@@ -292,14 +249,15 @@ class HybridSearchService:
         result.sort(key=lambda x: x[1], reverse=True)
         return result
 
-    def _apply_per_doc_quota(self, chunks: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """Cap each document to _MAX_CHUNKS_PER_DOC to prevent one corpus-dominant
-        document from filling all top-K slots on cross-company queries."""
+    def _apply_per_doc_quota(self, chunks: list[RetrievedChunk], top_k: int) -> list[RetrievedChunk]:
+        """Cap each document dynamically to prevent one corpus-dominant
+        document from filling all top-K slots on cross-corpus queries."""
+        max_chunks = max(5, top_k // 2)
         counts: dict[str, int] = {}
         result: list[RetrievedChunk] = []
         for chunk in chunks:
             n = counts.get(chunk.document_id, 0)
-            if n < _MAX_CHUNKS_PER_DOC:
+            if n < max_chunks:
                 result.append(chunk)
                 counts[chunk.document_id] = n + 1
         return result

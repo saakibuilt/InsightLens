@@ -231,11 +231,7 @@ def _detect_chunk_type(text: str, is_likely_visual: bool, has_tables: bool) -> s
     if is_likely_visual:
         return "chart_caption"
     if has_tables:
-        # pdfplumber successfully extracted row/column structure → real table
         return "financial_table"
-    # High numeric density but NO extracted table → chart or graph slide.
-    # Classifying these as financial_table is misleading since there is no
-    # structured_content to render; chart_caption is more accurate.
     numeric_chars = sum(1 for c in text if c.isdigit() or c in ".,%-$")
     if text and numeric_chars / len(text) > 0.15:
         return "chart_caption"

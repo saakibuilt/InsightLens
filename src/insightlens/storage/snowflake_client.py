@@ -62,7 +62,6 @@ def _split_statements(sql_text: str) -> list[str]:
         stripped = stmt.strip()
         if not stripped:
             continue
-        # Skip fragments that are only SQL comments (no executable keyword)
         non_comment = "\n".join(
             line for line in stripped.splitlines() if not line.strip().startswith("--")
         ).strip()

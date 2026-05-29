@@ -1,8 +1,4 @@
-"""Unit tests for version scoring, chunk-type scoring, and query classification.
-
-These cover the two retrieval improvements added in the current session.
-No Snowflake or network access required — all tests run offline.
-"""
+"""Unit tests for version scoring, chunk-type scoring, and query classification."""
 from __future__ import annotations
 
 import sys
@@ -16,8 +12,6 @@ from insightlens.retrieval.hybrid_search import HybridSearchService, _NUMERIC_QU
 from insightlens.retrieval.vector_search import RetrievalRequest
 from insightlens.storage.chunk_repository import RetrievedChunk
 
-
-# ── Helpers ────────────────────────────────────────────────────────────────────
 
 def _chunk(chunk_id, doc_id, chunk_type="body", supersedes=None, text="sample"):
     return RetrievedChunk(
@@ -48,8 +42,6 @@ def _service():
     return HybridSearchService(_Stub(), _Stub(), [])
 
 
-# ── Numeric query classification ────────────────────────────────────────────────
-
 @pytest.mark.parametrize("query", [
     "What was VICI's FFO per share in Q3 2024?",
     "What is the cap rate on recent acquisitions?",
@@ -75,7 +67,6 @@ def test_narrative_queries_are_not_detected(query):
     assert not bool(_NUMERIC_QUERY_RE.search(query)), f"Expected narrative: {query!r}"
 
 
-# ── Version scoring ─────────────────────────────────────────────────────────────
 
 def test_current_version_gets_boost():
     svc = _service()
@@ -114,7 +105,6 @@ def test_multi_hop_version_chain():
     assert scores[v1] < 1.0, "V1 is superseded by V2 — should be penalised"
 
 
-# ── Chunk-type scoring ─────────────────────────────────────────────────────────
 
 def test_financial_table_boosted_on_numeric_query():
     svc = _service()
@@ -138,7 +128,6 @@ def test_preferred_chunk_types_override_auto_detection():
     svc = _service()
     table = _chunk("t1", "D1", chunk_type="financial_table")
     body  = _chunk("b1", "D1", chunk_type="body")
-    # Explicit caller override: prefer tables regardless of query content
     req = RetrievalRequest(
         query="What is the investment thesis?",
         top_k=5,

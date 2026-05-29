@@ -1,14 +1,4 @@
-"""
-Systematic retrieval quality evaluation — recall@k and MRR.
-
-Measures whether retrieval surfaces chunks containing expected keywords
-for a labeled set of questions (golden_qa.json).
-
-Run:
-    python -m pytest tests/test_retrieval_eval.py -v -s
-
-Requires Snowflake credentials in .env (integration test — skipped if missing).
-"""
+"""Systematic retrieval quality evaluation — recall@k and MRR."""
 from __future__ import annotations
 
 import json
@@ -18,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-# Make the src/ package importable when running from the repo root
 sys.path.insert(0, str(Path(__file__).parents[1] / "src"))
 
 GOLDEN_QA_PATH = Path(__file__).parent / "golden_qa.json"
