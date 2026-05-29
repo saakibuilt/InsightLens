@@ -125,6 +125,134 @@ pytest
 
 ---
 
+## User Interface
+
+The Streamlit app provides an intuitive chat-based interface for querying documents:
+
+### Layout
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  AI Epstein Agent                                               │
+│  Indexing 50,000 records across 42 case files                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  [SIDEBAR]                   │  [MAIN CHAT AREA]               │
+│  ✓ Upload Case Files         │                                 │
+│  ✓ Sources per Answer        │  Assistant: Here's what I found │
+│    (slider: 3-15)            │  [Source 1] Court Doc p.3       │
+│  ✓ Clear Conversation        │  [Source 2] Deposition p.7      │
+│  ✓ Clear Database            │  [Source 3] Exhibit A p.2       │
+│                              │                                 │
+│                              │  [User message input box]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Features
+
+| Feature | Description |
+|---------|-------------|
+| **File Upload** | Drag-and-drop PDFs, images (JPG, PNG, TIFF) directly into the app. Auto-triggers ingestion pipeline |
+| **Chat History** | Conversation persists in session state. Previous questions and answers scroll with context |
+| **Source Citations** | Each answer shows indexed source cards with: document name, page number, chunk type (table/body/chart), document version, staleness flags |
+| **Financial Table Preview** | Tables from documents are rendered as formatted DataFrames inline — no need to jump to the PDF |
+| **Source Filter** | Slider control to adjust how many sources appear in each answer (3–15 chunks) |
+| **Clear Controls** | One-click buttons to clear conversation history or wipe the entire Snowflake database for fresh starts |
+| **Metadata Bar** | Shows live stats: number of indexed documents, total chunks in vector store, file count in data folder |
+
+### Answer Format
+
+Answers appear in three tiers:
+
+1. **Badge & Type** — Visual indicator (table icon, quote for narrative, $ for financial) + chunk type classification
+2. **Content Preview** — First few lines of the source with HTML-styled formatting; longer passages scroll
+3. **Metadata Footer** — Document name, page, version label (e.g. "v1.2"), staleness warning if >2 years old
+
+### Interaction Flow
+
+```
+1. User types question
+   ↓
+2. Hybrid retrieval runs (vector + BM25 + RRF fusion)
+   ↓
+3. Top K chunks displayed with score badges
+   ↓
+4. Claude generates answer with inline [Source N] citations
+   ↓
+5. Clicking a source card opens the full chunk in a collapsible details panel
+```
+
+---
+
+## Example Queries
+
+The system is optimized for these types of questions:
+
+### Financial Metrics
+- "What was the NOI growth year-over-year?"
+- "What is the Q3 2024 FFO per share?"
+- "Compare dividend yield across properties"
+
+### Cross-Document Analysis
+- "How did the company's strategy shift between the Dec 2025 and Mar 2026 presentations?"
+- "What acquisitions were announced vs. actually completed?"
+
+### Entity & Relationship Queries
+- "Which portfolio companies have the longest lease terms?"
+- "Who are the major institutional investors mentioned?"
+
+### Temporal Queries
+- "What was the occupancy rate in each quarter of 2025?"
+- "Track the debt-to-EBITDA ratio over time"
+
+### Hybrid Keyword + Semantic
+- "What does the court document say about liability?" (semantic matching on "responsibility/fault/accountability")
+- "Find all mentions of 'experienced operator' or equivalent terms"
+
+---
+
+## Architecture
+
+```
+INPUT (PDFs/Images)
+    ↓
+[PDF Parser + Vision Extractor]
+    ├─ Text extraction (PyMuPDF)
+    ├─ Table detection (pdfplumber)
+    ├─ Vision API (Claude Sonnet) for charts/maps
+    ├─ Footnote tagging
+    ↓
+[Chunker]
+    ├─ Slide-aware (preserves logical boundaries)
+    ├─ Token counting (tiktoken)
+    ↓
+[Embedder]
+    ├─ Model: all-MiniLM-L6-v2 (384-dim vectors)
+    ├─ Local inference (no API calls)
+    ↓
+SNOWFLAKE (Vector Store)
+    ├─ DOCUMENTS table (metadata)
+    ├─ CHUNKS table (vectors + text)
+    ├─ Version relationships
+    ↓
+[Hybrid Retrieval] ← USER QUERY
+    ├─ Vector search (cosine similarity)
+    ├─ BM25 keyword search
+    ├─ RRF fusion
+    ├─ Version scoring
+    ├─ Chunk-type scoring
+    ├─ Cross-encoder reranking
+    ↓
+[Claude Generation]
+    ├─ System prompt (12 rules)
+    ├─ Retrieved chunks
+    ├─ Citation formatting
+    ↓
+STREAMLIT UI
+    └─ Chat interface with source cards
+```
+
+---
+
 ## Evaluation Results
 
 ```
